@@ -1,12 +1,10 @@
-#!/usr/bin/env python
-
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import pygame
 from pygame.locals import *
 import serial
 
-#ser = serial.Serial('/dev/tty.usbserial', 38400, timeout=1)
+
 ser = serial.Serial('/dev/cu.usbmodem14101', 38400, timeout=1)
 
 ax = ay = az = 0.0
@@ -53,9 +51,7 @@ def draw():
 
     drawText((-2,-2, 2), osd_line)
 
-    # the way I'm holding the IMU board, X and Y axis are switched 
-    # with respect to the OpenGL coordinate system
-    if yaw_mode:                             # experimental
+    if yaw_mode:                            
         glRotatef(az, 0.0, 1.0, 0.0)  # Yaw,   rotate around y-axis
     else:
         glRotatef(0.0, 0.0, 1.0, 0.0)
