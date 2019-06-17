@@ -1,9 +1,3 @@
-// MPU-6050 Accelerometer + Gyro
-
-// Bluetooth module connected to digital pins 2,3
-// I2C bus on A4, A5
-// Servo on pin 0
-
 #include <Wire.h>
 //#include <SoftwareSerial.h>
 #include <math.h>
@@ -12,9 +6,6 @@
 #define MPU6050_I2C_ADDRESS 0x68
 
 #define FREQ  30.0 // sample freq in Hz
-
-// Bluetooth transmitter, used optionally
-// SoftwareSerial BTSerial(2, 3); // RX | TX
 
 Servo roll_servo;
 
