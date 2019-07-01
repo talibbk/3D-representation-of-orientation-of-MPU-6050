@@ -1,13 +1,25 @@
+// MPU-6050 Accelerometer + Gyro
+
+// Bluetooth module connected to digital pins 2,3
+// I2C bus on A4, A5
+// Servo on pin 0
+//Servo is used here to check the authenticity of gyro data
+//Since we are not using servo, i have commented out codes related to servo
+
 #include <Wire.h>
 //#include <SoftwareSerial.h>
 #include <math.h>
-#include <Servo.h>
+//#include <Servo.h>
 
-#define MPU6050_I2C_ADDRESS 0x68
+
+#define MPU6050_I2C_ADDRESS 0x68 //as metntioned in datasheet section 4.32 and 9.2, if the pin(AD0) is LOW I2C adderess will be 0x68 and if the pin is HIGH address will be 0x69
 
 #define FREQ  30.0 // sample freq in Hz
 
-Servo roll_servo;
+// Bluetooth transmitter, used optionally
+// SoftwareSerial BTSerial(2, 3); // RX | TX
+
+//Servo roll_servo;
 
 // global angle, gyro derived
 double gSensitivity = 65.5; // for 500 deg/s, check data sheet
@@ -30,14 +42,14 @@ void setup()
   pinMode(13, OUTPUT); 
 
   // servo 
-  roll_servo.attach(9, 550, 2550);
+  //roll_servo.attach(9, 550, 2550);
 
   // Initialize the 'Wire' class for the I2C-bus.
   Wire.begin();
 
   // PWR_MGMT_1:
   // wake up 
-  i2c_write_reg (MPU6050_I2C_ADDRESS, 0x6b, 0x00);
+  i2c_write_reg (MPU6050_I2C_ADDRESS, 0x6b, 0x00); //(accessing Power Management to wakeup the device : section 4.28)
 
   // CONFIG:
   // Low pass filter samples, 1khz sample rate
@@ -45,7 +57,7 @@ void setup()
 
   // GYRO_CONFIG:
   // 500 deg/s, FS_SEL=1
-  // This means 65.5 LSBs/deg/s
+  // This means sensitivity 65.5 LSBs/deg/s
   i2c_write_reg(MPU6050_I2C_ADDRESS, 0x1b, 0x08);
 
   // CONFIG:
@@ -113,7 +125,7 @@ void loop()
     }  
   }
 
-  roll_servo.write(-gx+90);
+  //roll_servo.write(-gx+90);
 
   end_time = millis();
 
@@ -133,14 +145,16 @@ void calibrate(){
 
   for (x = 0; x < num; x++){
 
-    error = i2c_read(MPU6050_I2C_ADDRESS, 0x43, i2cData, 6);
+    error = i2c_read(MPU6050_I2C_ADDRESS, 0x43, i2cData, 6); //requesting data from 6 registers of gyroscope 0x43 - 0x48
     if(error!=0)
     return;
 
-    xSum += ((i2cData[0] << 8) | i2cData[1]);
-    ySum += ((i2cData[2] << 8) | i2cData[3]);
-    zSum += ((i2cData[4] << 8) | i2cData[5]);
+    xSum += ((i2cData[0] << 8) | i2cData[1]); //Store first two bytes into xSum
+    ySum += ((i2cData[2] << 8) | i2cData[3]); //Store next two bytes into ySUm
+    zSum += ((i2cData[4] << 8) | i2cData[5]); //Store next two bytes into zSum
   }
+
+  //calculationg average offsets
   gyrXoffs = xSum / num;
   gyrYoffs = ySum / num;
   gyrZoffs = zSum / num;
@@ -158,18 +172,20 @@ void read_sensor_data(){
  uint8_t i2cData[14];
  uint8_t error;
  // read imu data
- error = i2c_read(MPU6050_I2C_ADDRESS, 0x3b, i2cData, 14);
+ error = i2c_read(MPU6050_I2C_ADDRESS, 0x3b, i2cData, 14); //mentioned in section 4.17 , request data from registers 0x3b - 0x48
  if(error!=0)
  return;
 
  // assemble 16 bit sensor data
- accX = ((i2cData[0] << 8) | i2cData[1]);
- accY = ((i2cData[2] << 8) | i2cData[3]);
- accZ = ((i2cData[4] << 8) | i2cData[5]);
+ accX = ((i2cData[0] << 8) | i2cData[1]); //Store first two bytes into accX
+ accY = ((i2cData[2] << 8) | i2cData[3]); //Store next two bytes into accY
+ accZ = ((i2cData[4] << 8) | i2cData[5]); //Store next two bytes into accZ
 
- gyrX = (((i2cData[8] << 8) | i2cData[9]) - gyrXoffs) / gSensitivity;
- gyrY = (((i2cData[10] << 8) | i2cData[11]) - gyrYoffs) / gSensitivity;
- gyrZ = (((i2cData[12] << 8) | i2cData[13]) - gyrZoffs) / gSensitivity;
+ //skipped next two temp readings 0x41 and 0x 42
+
+ gyrX = (((i2cData[8] << 8) | i2cData[9]) - gyrXoffs) / gSensitivity; //Store first two bytes into gyrX
+ gyrY = (((i2cData[10] << 8) | i2cData[11]) - gyrYoffs) / gSensitivity; //Store next two bytes into gyrY
+ gyrZ = (((i2cData[12] << 8) | i2cData[13]) - gyrZoffs) / gSensitivity; //Store last two bytes into gyrZ
  
 }
 
@@ -230,4 +246,3 @@ int i2c_write_reg(int addr, int reg, uint8_t data)
   error = i2c_write(addr, reg, &data, 1);
   return (error);
 }
-
