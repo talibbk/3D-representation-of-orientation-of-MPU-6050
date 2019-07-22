@@ -13,6 +13,8 @@ ser = serial.Serial('/dev/cu.usbmodem14101', 38400, timeout=1)
 
 ax = ay = az = 0.0
 yaw_mode = False
+record_mode = False
+axis_mode = False
 
 def resize(width, height):
     if height==0:
@@ -39,6 +41,19 @@ def drawText(position, textString):
     glRasterPos3d(*position)     
     glDrawPixels(textSurface.get_width(), textSurface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, textData)
 
+def storeCsv(ay,ax,az):
+        #Header for CSV
+    with open('test1.csv', 'a') as logfile:
+        fieldnames = ['Pitch','Roll','Yaw']
+        writer = csv.DictWriter(logfile, fieldnames = fieldnames)
+
+    #Write header only if its not present  
+        if logfile.tell() == 0:
+            writer.writeheader()
+
+    #Write data to CSV
+        writer.writerow({'Pitch':ay, 'Roll':ax, 'Yaw':az})
+    
 def draw():
     global rquad
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	
@@ -64,18 +79,6 @@ def draw():
     glRotatef(ay ,1.0,0.0,0.0)        # Pitch, rotate around x-axis
     glRotatef(-1*ax ,0.0,0.0,1.0)     # Roll,  rotate around z-axis
     
-    #Header for CSV
-    with open('test1.csv', 'a') as logfile:
-        fieldnames = ['Pitch','Roll','Yaw']
-        writer = csv.DictWriter(logfile, fieldnames = fieldnames)
-
-    #Write header only if its not present  
-        if logfile.tell() == 0:
-            writer.writeheader()
-
-    #Write data to CSV
-        writer.writerow({'Pitch':ay, 'Roll':ax, 'Yaw':az})
-      
     print(osd_line)
 
     glBegin(GL_QUADS)	
@@ -119,9 +122,9 @@ def draw():
 
 def axes():
     #Draw coordinate axes.
-    #Red = Positive X direction
-    #White = Positive Y direction
-    #Blue = Positive Z direction
+    #Red = Positive X direction - Roll
+    #White = Positive Z direction - Yaw
+    #Blue = Positive Y direction - Pitch
 
     glLineWidth(3.0)
     glBegin(GL_LINES)
@@ -183,13 +186,13 @@ def read_data():
         line_done = 1 
 
 def main():
-    global yaw_mode
+    global yaw_mode,record_mode,axis_mode
 
     video_flags = OPENGL|DOUBLEBUF
     
     pygame.init()
     screen = pygame.display.set_mode((640,480), video_flags)
-    pygame.display.set_caption("Press Esc to quit, z toggles yaw mode")
+    pygame.display.set_caption("Press Esc to quit, z toggles yaw mode, s toggles data recording")
     resize(640,480)
     init()
     frames = 0
@@ -203,9 +206,23 @@ def main():
             yaw_mode = not yaw_mode
             ser.write(b"z")
         read_data()
+        
         draw()
-        axes()
-      
+        
+        if event.type == KEYDOWN and event.key == K_a:
+            axis_mode = not axis_mode
+            print("Toggle Axes...")
+
+        if axis_mode:
+            axes()
+        
+        if event.type == KEYDOWN and event.key == K_s:
+            record_mode = not record_mode
+            print("Toggle data recording in CSV...")
+
+        if record_mode:
+            storeCsv(ay,ax,az)
+
         pygame.display.flip()
         frames = frames+1
 
